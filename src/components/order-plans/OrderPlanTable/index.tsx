@@ -35,10 +35,19 @@ export function OrderPlanTable({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loadingBidNtceNo, setLoadingBidNtceNo] = useState<string | null>(null);
 
-  // 입찰공고 조회 및 모달 열기
-  const handleFetchBidNotice = async (bidNtceNoList: string) => {
-    // bid_ntce_no_list에서 뒤 3자리 제거 (예: "R26BK01274957000" → "R26BK01274957")
-    const bidNtceNo = bidNtceNoList.slice(0, -3);
+  // 통합된 입찰공고 조회 함수 (캐시 있으면 바로 표시, 없으면 API 호출)
+  const handleViewBidNotice = async (item: OrderPlanItem) => {
+    // 캐시가 있으면 바로 표시
+    if (item.bid_notices && item.bid_notices.length > 0) {
+      setSelectedBidNotice(item.bid_notices[0]);
+      setDialogOpen(true);
+      return;
+    }
+
+    // 캐시가 없으면 API 호출
+    if (!item.bid_ntce_no_list) return;
+    
+    const bidNtceNo = item.bid_ntce_no_list.slice(0, -3);
     setLoadingBidNtceNo(bidNtceNo);
 
     try {
@@ -51,12 +60,6 @@ export function OrderPlanTable({
     } finally {
       setLoadingBidNtceNo(null);
     }
-  };
-
-  // 캐시된 입찰공고 모달 열기
-  const handleShowBidNotice = (bidNotice: BidNotice) => {
-    setSelectedBidNotice(bidNotice);
-    setDialogOpen(true);
   };
 
   if (isLoading) {
@@ -168,32 +171,23 @@ export function OrderPlanTable({
                   </TableCell>
                   <TableCell>
                     {!item.bid_ntce_no_list ? (
-                      // Case 1: bid_ntce_no_list 없음 → 공고 예정
+                      // 공고 예정
                       <span className="text-sm text-muted-foreground">
                         📋 공고 예정
                       </span>
-                    ) : item.bid_notices && item.bid_notices.length > 0 ? (
-                      // Case 2: bid_notices 있음 (캐시) → 상세보기
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleShowBidNotice(item.bid_notices![0])}
-                      >
-                        📄 상세보기
-                      </Button>
                     ) : (
-                      // Case 3: bid_ntce_no_list 있지만 캐시 없음 → 조회하기
+                      // 통합된 상세보기 버튼
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleFetchBidNotice(item.bid_ntce_no_list!)}
+                        onClick={() => handleViewBidNotice(item)}
                         disabled={
                           loadingBidNtceNo === item.bid_ntce_no_list?.slice(0, -3)
                         }
                       >
                         {loadingBidNtceNo === item.bid_ntce_no_list?.slice(0, -3)
                           ? "⏳ 조회중..."
-                          : "🔍 조회하기"}
+                          : "📄 상세보기"}
                       </Button>
                     )}
                   </TableCell>
